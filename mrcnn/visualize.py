@@ -97,6 +97,7 @@ def display_instances(image, boxes, masks, class_ids, class_names,
     colors: (optional) An array or colors to use with each object
     captions: (optional) A list of strings to use as captions for each object
     """
+'''
     # Number of instances
     N = boxes.shape[0]
     if not N:
@@ -114,11 +115,11 @@ def display_instances(image, boxes, masks, class_ids, class_names,
     colors = colors or random_colors(N)
 
     # Show area outside image boundaries.
-    height, width = image.shape[:2]
-    ax.set_ylim(height + 10, -10)
-    ax.set_xlim(-10, width + 10)
-    ax.axis('off')
-    ax.set_title(title)
+    #height, width = image.shape[:2]
+    #ax.set_ylim(height + 0, -0)
+    #ax.set_xlim(-0, width + 0)
+    #ax.axis('off')
+    #ax.set_title(title)
 
     masked_image = image.astype(np.uint32).copy()
     for i in range(N):
@@ -133,7 +134,8 @@ def display_instances(image, boxes, masks, class_ids, class_names,
             p = patches.Rectangle((x1, y1), x2 - x1, y2 - y1, linewidth=2,
                                 alpha=0.7, linestyle="dashed",
                                 edgecolor=color, facecolor='none')
-            ax.add_patch(p)
+            #ax.add_patch(p)
+
 
         # Label
         if not captions:
@@ -142,10 +144,10 @@ def display_instances(image, boxes, masks, class_ids, class_names,
             label = class_names[class_id]
             caption = "{} {:.3f}".format(label, score) if score else label
         else:
-            caption = captions[i]
-        ax.text(x1, y1 + 8, caption,
-                color='w', size=11, backgroundcolor="none")
-
+             caption = captions[i]
+        ax.text(x1, y1 + 18, caption,
+                color='w', size=11, backgroundcolor="none") 
+        
         # Mask
         mask = masks[:, :, i]
         if show_mask:
@@ -161,10 +163,9 @@ def display_instances(image, boxes, masks, class_ids, class_names,
             # Subtract the padding and flip (y, x) to (x, y)
             verts = np.fliplr(verts) - 1
             p = Polygon(verts, facecolor="none", edgecolor=color)
-            ax.add_patch(p)
-    ax.imshow(masked_image.astype(np.uint8))
-    if auto_show:
-        plt.show()
+            ax.add_patch(p)'''
+
+
 
 
 def display_differences(image,
