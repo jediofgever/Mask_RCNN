@@ -34,7 +34,7 @@ from mrcnn.visualize import display_images
 import mrcnn.model as modellib
 from mrcnn.model import log
 
-from samples.motor_part import motor_part
+from samples.motor_part import train_motor_part
 
 
 
@@ -44,7 +44,7 @@ MODEL_DIR = os.path.join(ROOT_DIR, "logs")
 
 
 
-config = motor_part.MotorPartConfig()
+config = train_motor_part.MotorPartConfig()
 MOTOR_PART_DATA_DIR =  "/home/atas/catkin_ws/src/ROS_FANUC_LRMATE200ID/inference"
 
 
@@ -94,7 +94,7 @@ def get_ax(rows=1, cols=1, size=16):
 # ## Load test Dataset
 
 
-dataset = motor_part.MotorPartDataset()
+dataset = train_motor_part.MotorPartDataset()
 dataset.load_motor_part(MOTOR_PART_DATA_DIR)
 dataset.prepare()
 
@@ -141,7 +141,7 @@ def run_inference():
     '''
     cv_image = cv2.imread(info["path"],cv2.IMREAD_COLOR)
 
-    segmented_image = motor_part.segment_objects_on_white_image(cv_image,r['rois'], r['masks'], r['class_ids'], 
+    segmented_image = train_motor_part.segment_objects_on_white_image(cv_image,r['rois'], r['masks'], r['class_ids'], 
                             dataset.class_names, r['scores']) 
 
     window_name = "/home/atas/catkin_ws/src/ROS_FANUC_LRMATE200ID/inference/masks.png"
