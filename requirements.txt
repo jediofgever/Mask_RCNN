@@ -2,7 +2,7 @@ numpy
 scipy
 Pillow
 cython
-matplotlib ==3.0.0
+matplotlib ==3.1.1
 scikit-image == 0.15
 tensorflow-gpu==1.14.0
 keras==2.1.0

@@ -113,6 +113,15 @@ weights_path = model.find_last()
 print("Loading weights ", weights_path)
 model.load_weights(weights_path, by_name=True)
 
+from scripts.export_model import export
+
+export(config, MODEL_DIR, weights_path)
+
+model.keras_model.save("mrcnn.h5")
+print("EXITING .....")
+
+exit(0)
+
 def run_inference():
 
     # run inference in first image
