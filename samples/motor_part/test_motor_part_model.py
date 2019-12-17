@@ -2,11 +2,20 @@
 # coding: utf-8
 
 # # Mask R-CNN - Inspect Ballon Trained Model
-# 
+#
 # Code and visualizations to test, debug, and evaluate the Mask R-CNN model.
 
 
-
+from mrcnn.config import Config
+from skimage.color import rgb2xyz
+from skimage.draw import rectangle
+import json
+import datetime
+from mrcnn.model import log
+import mrcnn.model as modellib
+from mrcnn.visualize import display_images
+from mrcnn import visualize
+from mrcnn import utils
 import os
 import sys
 import random
@@ -23,29 +32,31 @@ from skimage import img_as_ubyte
 import cv2
 import h5py
 
+import sys
+import time
+
+# numpy and scipy
+import numpy as np
+from scipy.ndimage import filters
+
+# OpenCV
+import cv2
+
+# Ros libraries
+import roslib
+import rospy
+
+# Ros Messages
+from sensor_msgs.msg import CompressedImage
+from sensor_msgs.msg import Image
+
+from cv_bridge import CvBridge, CvBridgeError
+
 # Root directory of the project
 ROOT_DIR = os.path.abspath("../../")
 
 # Import Mask RCNN
 sys.path.append(ROOT_DIR)  # To find local version of the library
-from mrcnn import utils
-from mrcnn import visualize
-from mrcnn.visualize import display_images
-import mrcnn.model as modellib
-from mrcnn.model import log
-
-import datetime
-import numpy as np
-import skimage.draw
-import cv2
-import json
-
-from skimage import img_as_ubyte
-from skimage.draw import rectangle
-from skimage.color import rgb2xyz
-import random
-from mrcnn.config import Config
-
 
 
 class MotorPartConfig(Config):
@@ -104,17 +115,16 @@ class MotorPartDataset(utils.Dataset):
         # We mostly care about the x and y coordinates of each region
         # Note: In VIA 2.0, regions was changed from a dict to a list.
         with open('/home/atas/catkin_ws/src/ROS_FANUC_LRMATE200ID/inference/test.json', 'r') as myfile:
-            data=myfile.read()
+            data = myfile.read()
 
         # parse file
         annotations = json.loads(data)
         #annotations = json.load(open('/media/atas/b7743b4f-8b7a-46b5-bd01-cb2efaeedf63/home/atas/Dataset_Synthesizer/Source/NVCapturedData/NewMap/label.json'))
-        #annotations = list(annotations.values())  # don't need the dict keys
+        # annotations = list(annotations.values())  # don't need the dict keys
 
         # The VIA tool saves images in the JSON even if they don't have any
         # annotations. Skip unannotated images.
         #annotations = [a for a in annotations if a['regions']]
-
 
         via_1_check = annotations.get('regions')
         via_2_check = annotations.get('_via_img_metadata')
@@ -127,8 +137,9 @@ class MotorPartDataset(utils.Dataset):
             annotations = list(annotations['_via_img_metadata'].values())
         # Unknown JSON formatting
         else:
-            raise ValueError('The JSON provided is not in a recognised via-1.x or via-2.x format.')
-    
+            raise ValueError(
+                'The JSON provided is not in a recognised via-1.x or via-2.x format.')
+
         #annotations = [a for a in annotations if a['regions']]
 
         # Add images
@@ -138,9 +149,10 @@ class MotorPartDataset(utils.Dataset):
             # shape_attributes (see json format above)
             # The if condition is needed to support VIA versions 1.x and 2.x.
             if type(a['regions']) is dict:
-                polygons = [r['shape_attributes'] for r in a['regions'].values()]
+                polygons = [r['shape_attributes']
+                            for r in a['regions'].values()]
             else:
-                polygons = [r['shape_attributes'] for r in a['regions']] 
+                polygons = [r['shape_attributes'] for r in a['regions']]
 
             # load_mask() needs the image size to convert polygons to masks.
             # Unfortunately, VIA doesn't include it in JSON, so we must read
@@ -190,8 +202,9 @@ class MotorPartDataset(utils.Dataset):
         else:
             super(self.__class__, self).image_reference(image_id)
 
+
 def segment_objects_on_white_image(image, boxes, masks, class_ids, class_names,
-                      scores=None,):
+                                   scores=None,):
     """Apply color splash effect.
     image: RGB image [height, width, 3]
     mask: instance segmentation mask [height, width, instance count]
@@ -200,10 +213,10 @@ def segment_objects_on_white_image(image, boxes, masks, class_ids, class_names,
     # Make a grayscale copy of the image. The grayscale copy still
     # has 3 RGB channels, though.
     #xyz = rgb2xyz(image)
-    height = 1024#image.shape[0]
-    width = 1024#image.shape[1]
-    channels = 3#image.shape[2] 
- 
+    height = 1024  # image.shape[0]
+    width = 1024  # image.shape[1]
+    channels = 3  # image.shape[2]
+
     # Copy color pixels from the original color image where mask is set
     if masks.shape[-1] > 0:
         fuck_python = True
@@ -220,43 +233,38 @@ def segment_objects_on_white_image(image, boxes, masks, class_ids, class_names,
             # Skip this instance. Has no bbox. Likely lost in image cropping.
             continue
         #y1, x1, y2, x2 = boxes[i]
-        
+
         #boxed_image = cv2.rectangle(image,(x1,y1),(x2,y2),(0,225,0),1)
-        
 
         class_id = class_ids[i]
         score = scores[i] if scores is not None else None
         label = class_names[class_id]
         caption = "{} {:.3f}".format(label, score) if score else label
-        
+
         # Mask
         mask = masks[:, :, i]
-        object_mask_image = np.zeros((height,width,1), np.uint8)
-        
+        object_mask_image = np.zeros((height, width, 1), np.uint8)
 
-        for i in range(0,height):
-            for j in range(0,width):
+        for i in range(0, height):
+            for j in range(0, width):
                 val = mask[i][j]
                 object_mask_image[i][j] = val
 
         contours, hierarchy = cv2.findContours(
-                object_mask_image, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE
-            )
-        cv2.fillPoly(white_image, contours, (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255)))
-
+            object_mask_image, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE
+        )
+        cv2.fillPoly(white_image, contours, (random.randint(
+            0, 255), random.randint(0, 255), random.randint(0, 255)))
 
     return white_image
-
 
 
 # Directory to save logs and trained model
 MODEL_DIR = os.path.join(ROOT_DIR, "logs")
 
 
-
-
 config = MotorPartConfig()
-MOTOR_PART_DATA_DIR =  "/home/atas/catkin_ws/src/ROS_FANUC_LRMATE200ID/inference"
+MOTOR_PART_DATA_DIR = "/home/atas/catkin_ws/src/ROS_FANUC_LRMATE200ID/inference"
 
 
 # In[4]:
@@ -269,6 +277,7 @@ class InferenceConfig(config.__class__):
     GPU_COUNT = 1
     IMAGES_PER_GPU = 1
 
+
 config = InferenceConfig()
 config.display()
 
@@ -279,7 +288,7 @@ config.display()
 
 
 # Device to load the neural network on.
-# Useful if you're training a model on the same 
+# Useful if you're training a model on the same
 # machine, in which case use CPU and leave the
 # GPU for training.
 DEVICE = "/gpu:0"  # /cpu:0 or /gpu:0
@@ -290,12 +299,11 @@ DEVICE = "/gpu:0"  # /cpu:0 or /gpu:0
 TEST_MODE = "inference"
 
 
-
 def get_ax(rows=1, cols=1, size=16):
     """Return a Matplotlib Axes array to be used in
     all visualizations in the notebook. Provide a
     central point to control graph sizes.
-    
+
     Adjust the size attribute to control how big to render images
     """
     _, ax = plt.subplots(rows, cols, figsize=(size*cols, size*rows))
@@ -305,25 +313,6 @@ def get_ax(rows=1, cols=1, size=16):
 # ## Load test Dataset
 
 
-dataset = MotorPartDataset()
-dataset.load_motor_part(MOTOR_PART_DATA_DIR)
-dataset.prepare()
-
-
-
-# Create model in inference mode
-with tf.device(DEVICE):
-    model = modellib.MaskRCNN(mode="inference", model_dir=MODEL_DIR,
-                              config=config)
-
-
-# Or, load the last model you trained
-#weights_path = model.find_last()
-weights_path = "/home/atas/catkin_ws/src/ROS_FANUC_LRMATE200ID/Mask_RCNN/logs/motor_part20191203T2300/mask_rcnn_motor_part_0030.h5"
-
-# Load weights
-print("Loading weights ", weights_path)
-model.load_weights(weights_path, by_name=True)
 '''
 from scripts.export_model import export
 
@@ -334,12 +323,15 @@ print("EXITING .....")
 
 exit(0)
 '''
+
+
 def run_inference():
 
     # run inference in first image
     image_id = 0
 
-    image, image_meta, gt_class_id, gt_bbox, gt_mask = modellib.load_image_gt(dataset, config, image_id, use_mini_mask=False)
+    image, image_meta, gt_class_id, gt_bbox, gt_mask = modellib.load_image_gt(
+        dataset, config, image_id, use_mini_mask=False)
     info = dataset.image_info[image_id]
 
     # Run object detection
@@ -360,22 +352,118 @@ def run_inference():
 
       
     '''
-    cv_image = cv2.imread(info["path"],cv2.IMREAD_COLOR)
+    cv_image = cv2.imread(info["path"], cv2.IMREAD_COLOR)
 
-    segmented_image = segment_objects_on_white_image(cv_image,r['rois'], r['masks'], r['class_ids'], 
-                            dataset.class_names, r['scores']) 
+    segmented_image = segment_objects_on_white_image(cv_image, r['rois'], r['masks'], r['class_ids'],
+                                                     dataset.class_names, r['scores'])
 
     window_name = "/home/atas/catkin_ws/src/ROS_FANUC_LRMATE200ID/inference/masks.png"
-   
-    cv2.imwrite(window_name, segmented_image)  
-    
+
+    cv2.imwrite(window_name, segmented_image)
+
     print("inferring more images  ...")
+
+dataset = MotorPartDataset()
+dataset.load_motor_part(MOTOR_PART_DATA_DIR)
+
+dataset.prepare()
+
+class image_feature:
+
+    def __init__(self):
+        '''Initialize ros publisher, ros subscriber'''
+        # topic where we publish
+        self.image_pub = rospy.Publisher("/output/image_raw/compressed",
+                                         CompressedImage)
+
+        self.subscriber = rospy.Subscriber("/camera/color/image_raw",
+               Image, self.callback,  queue_size = 1)
+        self.bridge = CvBridge()
+
+
+
+
+
  
-if __name__ == '__main__':
-    while True:
-        run_inference()
+ 
+
+
+    def callback(self, ros_data):
+        '''Callback function of subscribed topic. 
+        Here images get converted and features detected'''
+
+        with tf.device(DEVICE):
+            model = modellib.MaskRCNN(mode="inference", model_dir=MODEL_DIR,
+                              config=config)
+
+
+ 
+        weights_path = "/home/atas/catkin_build_ws/src/Mask_RCNN/logs/motor_part20191203T2300/mask_rcnn_motor_part_0030.h5"
+
+ 
+        print("Loading weights ", weights_path)
+        model.load_weights(weights_path, by_name=True)
+
+        #### direct conversion to CV2 ####
+        cv_image = self.bridge.imgmsg_to_cv2(ros_data, desired_encoding="passthrough")
+        cv2.imwrite("/home/atas/s.png", cv_image)
+
+        # run inference in first image
+        image_id = 0
+
+        image, image_meta, gt_class_id, gt_bbox, gt_mask = modellib.load_image_gt(
+            dataset, config, image_id, use_mini_mask=False)
+        info = dataset.image_info[image_id]
+
+        # Run object detection
+        results = model.detect([image], verbose=1)
+
+        # Display results
+
+        r = results[0]
+        '''
+        outfile = "/home/atas/catkin_ws/src/ROS_FANUC_LRMATE200ID/inference/masks.npy"
+        np.save(outfile, r['masks'])
     
+        data = np.array(r['masks'], dtype = np.bool_)
+        f = h5py.File('/home/atas/catkin_ws/src/ROS_FANUC_LRMATE200ID/inference/masks.h5', 'w')
+        f.create_dataset('data', data = data)
+  
+      
+        '''
+        ##cv_image = cv2.imread(info["path"], cv2.IMREAD_COLOR)
+        ##cv_image = image_np
 
- 
+        segmented_image = segment_objects_on_white_image(cv_image, r['rois'], r['masks'], r['class_ids'],
+                                                         dataset.class_names, r['scores'])
+
+        window_name = "/home/atas/catkin_ws/src/ROS_FANUC_LRMATE200ID/inference/masks.png"
+
+        cv2.imwrite(window_name, segmented_image)
+
+        #### Create CompressedIamge ####
+        msg = CompressedImage()
+        msg.header.stamp = rospy.Time.now()
+        msg.format = "jpeg"
+        msg.data = np.array(cv2.imencode(
+            '.jpg', segmented_image)[1]).tostring()
+        # Publish new image
+        self.image_pub.publish(msg)
+        print("publishing")
 
 
+def main(args):
+    '''Initializes and cleanup ros node'''
+    ic = image_feature()
+    rospy.init_node('image_feature', anonymous=True)
+    try:
+        rospy.spin()
+    except KeyboardInterrupt:
+        print("Shutting down ROS Image feature detector module")
+    cv2.destroyAllWindows()
+
+
+if __name__ == '__main__':
+    main(sys.argv)
+    # while True:
+    # run_inference()
