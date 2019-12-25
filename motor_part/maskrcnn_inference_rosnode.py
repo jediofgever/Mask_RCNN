@@ -56,6 +56,10 @@ class InferenceConfig(config.__class__):
     # Run detection on one image at a time
     GPU_COUNT = 1
     IMAGES_PER_GPU = 1
+    BATCH_SIZE = 8
+    IMAGE_MIN_DIM = 720
+    IMAGE_MAX_DIM = 1280
+
 
 config = InferenceConfig()
 config.display()
@@ -83,9 +87,9 @@ class Mask_RCNN_ROS_Node:
                                          Image)
 
         self.subscriber = rospy.Subscriber("/camera/color/image_raw",
-                                           Image, self.callback,  queue_size=1)
+                                           Image, self.callback, queue_size=1)
         self.bridge = CvBridge()
-        self.counter = 500 
+
 
     def callback(self, ros_data):
         '''Callback function of subscribed topic. 
@@ -93,29 +97,22 @@ class Mask_RCNN_ROS_Node:
         #### direct conversion to CV2 ####
         cv_image = self.bridge.imgmsg_to_cv2(ros_data, desired_encoding="bgr8")
 
-        image = img_as_float(cv_image)
-        imsave("/home/atas/sKI.png", image)
- 
 
-        imsave("/home/atas/real_img_data/"+str(self.counter)+".png", image)
-        image = imread("/home/atas/sKI.png")
-        self.counter +=1
-        image = self.load_image(image)
         # Run object detection
         global graph
         with graph.as_default():
-            results = model.detect([image], verbose=1)
+            results = model.detect([cv_image], verbose=1)
 
         # GET results
-
         r = results[0]
-
+         
         segmented_image = self.segment_objects_on_white_image(cv_image, r['rois'], r['masks'], r['class_ids'],
                                                           r['scores'])
         #### PUBLISH SEGMENTED IMAGE ####
         msg = self.bridge.cv2_to_imgmsg(segmented_image, "bgr8")
         msg.header.stamp = rospy.Time.now()
         self.image_pub.publish(msg)
+         
 
     def load_image(self, image):
         """Load the specified image and return a [H,W,3] Numpy array.
@@ -143,53 +140,32 @@ class Mask_RCNN_ROS_Node:
         width = image.shape[1]
         channels = image.shape[2]
 
-
-
-
-
-        # Copy color pixels from the original color image where mask is set
-        if masks.shape[-1] > 0:
-            fuck_python = True
-
         N = boxes.shape[0]
 
         white_image = np.zeros((height, width, channels), np.uint8)
         white_image[:] = (255, 255, 255)
- 
+        object_mask_image = np.zeros((height, width), np.uint8)
+
         for i in range(N):
 
             # Bounding box
             if not np.any(boxes[i]):
                 # Skip this instance. Has no bbox. Likely lost in image cropping.
                 continue
-            #y1, x1, y2, x2 = boxes[i]
-
-            #boxed_image = cv2.rectangle(image,(x1,y1),(x2,y2),(0,225,0),1)
 
             class_id = class_ids[i]
             score = scores[i] if scores is not None else None
             if(score < 0.99):
                 break
- 
-          
-            #label = class_names[class_id]
-            print(class_id, score)
-            #caption = "{} {:.3f}".format(label, score) if score else label
-
             # Mask
-            mask = masks[:, :, i]
-            object_mask_image = np.zeros((height, width, 1), np.uint8)
-
-            for i in range(0, height):
-                for j in range(0, width):
-                    val = mask[i][j]
-                    object_mask_image[i][j] = val
+            object_mask_image[:,:] = masks[:, :, i]
 
             contours, hierarchy = cv2.findContours(
                 object_mask_image, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE
             )
             cv2.fillPoly(white_image, contours, (random.randint(
                 0, 255), random.randint(0, 255), random.randint(0, 255)))
+               
 
         return white_image
 
