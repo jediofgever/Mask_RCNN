@@ -68,7 +68,7 @@ DEVICE = "/gpu:0"  # /cpu:0 or /gpu:0
 with tf.device(DEVICE):
     model = modellib.MaskRCNN(mode="inference", model_dir=MODEL_DIR,
                               config=config)
-weights_path = "/home/atas/catkin_build_ws/src/ROS_NNs_FANUC_LRMATE200ID/Mask_RCNN/logs/mask_rcnn_motor_part_0030.h5"
+weights_path = "/home/atas/catkin_build_ws/src/ROS_NNs_FANUC_LRMATE200ID/Mask_RCNN/logs/real_data_30_epoch.h5"
 print("Loading weights ", weights_path)
 model.load_weights(weights_path, by_name=True)
 graph = tf.get_default_graph()
@@ -85,6 +85,7 @@ class Mask_RCNN_ROS_Node:
         self.subscriber = rospy.Subscriber("/camera/color/image_raw",
                                            Image, self.callback,  queue_size=1)
         self.bridge = CvBridge()
+        self.counter = 500 
 
     def callback(self, ros_data):
         '''Callback function of subscribed topic. 
@@ -94,8 +95,11 @@ class Mask_RCNN_ROS_Node:
 
         image = img_as_float(cv_image)
         imsave("/home/atas/sKI.png", image)
-        image = imread("/home/atas/sKI.png")
+ 
 
+        imsave("/home/atas/real_img_data/"+str(self.counter)+".png", image)
+        image = imread("/home/atas/sKI.png")
+        self.counter +=1
         image = self.load_image(image)
         # Run object detection
         global graph
@@ -141,6 +145,8 @@ class Mask_RCNN_ROS_Node:
 
 
 
+
+
         # Copy color pixels from the original color image where mask is set
         if masks.shape[-1] > 0:
             fuck_python = True
@@ -149,7 +155,7 @@ class Mask_RCNN_ROS_Node:
 
         white_image = np.zeros((height, width, channels), np.uint8)
         white_image[:] = (255, 255, 255)
-        print(N)
+ 
         for i in range(N):
 
             # Bounding box
@@ -162,6 +168,13 @@ class Mask_RCNN_ROS_Node:
 
             class_id = class_ids[i]
             score = scores[i] if scores is not None else None
+            if(score < 0.99):
+                break
+ 
+          
+            #label = class_names[class_id]
+            print(class_id, score)
+            #caption = "{} {:.3f}".format(label, score) if score else label
 
             # Mask
             mask = masks[:, :, i]
@@ -178,7 +191,7 @@ class Mask_RCNN_ROS_Node:
             cv2.fillPoly(white_image, contours, (random.randint(
                 0, 255), random.randint(0, 255), random.randint(0, 255)))
 
-            return white_image
+        return white_image
 
 
 # Run Node

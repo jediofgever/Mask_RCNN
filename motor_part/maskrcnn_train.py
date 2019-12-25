@@ -51,7 +51,7 @@ from mrcnn.config import Config
 from mrcnn import model as modellib, utils
 
 # Path to trained weights file
-COCO_WEIGHTS_PATH = os.path.join(ROOT_DIR, "mask_rcnn_balloon.h5")
+COCO_WEIGHTS_PATH = "/home/atas/catkin_build_ws/src/ROS_NNs_FANUC_LRMATE200ID/Mask_RCNN/logs/NDDS_data_30_epoch.h5"
 
 # Directory to save logs and model checkpoints, if not provided
 # through the command line argument --logs
@@ -117,7 +117,7 @@ class MotorPartDataset(utils.Dataset):
         # }
         # We mostly care about the x and y coordinates of each region
         # Note: In VIA 2.0, regions was changed from a dict to a list.
-        with open('/home/atas/catkin_ws/src/ROS_FANUC_LRMATE200ID/inference/test.json', 'r') as myfile:
+        with open('/home/atas/real_img_data/train.json', 'r') as myfile:
             data=myfile.read()
 
         # parse file
@@ -238,8 +238,8 @@ def segment_objects_on_white_image(image, boxes, masks, class_ids, class_names,
     # Make a grayscale copy of the image. The grayscale copy still
     # has 3 RGB channels, though.
     #xyz = rgb2xyz(image)
-    height = 1024#image.shape[0]
-    width = 1024#image.shape[1]
+    height = 1280#image.shape[0]
+    width = 720#image.shape[1]
     channels = 3#image.shape[2] 
  
     # Copy color pixels from the original color image where mask is set
