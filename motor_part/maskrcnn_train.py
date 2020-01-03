@@ -1,29 +1,3 @@
-"""
-Mask R-CNN
-Train on the toy Balloon dataset and implement color splash effect.
-
-
-
-------------------------------------------------------------
-
-Usage: import the module (see Jupyter notebooks for examples), or run from
-       the command line as such:
-
-    # Train a new model starting from pre-trained COCO weights
-    python3 balloon.py train --dataset=/path/to/balloon/dataset --weights=coco
-
-    # Resume training a model that you had trained earlier
-    python3 balloon.py train --dataset=/path/to/balloon/dataset --weights=last
-
-    # Train a new model starting from ImageNet weights
-    python3 balloon.py train --dataset=/path/to/balloon/dataset --weights=imagenet
-
-    # Apply color splash to an image
-    python3 balloon.py splash --weights=/path/to/weights/file.h5 --image=<URL or path to file>
-
-    # Apply color splash to video using the last weights you trained
-    python3 balloon.py splash --weights=last --video=<URL or path to file>
-"""
 
 import os
 import sys
@@ -38,12 +12,9 @@ from skimage.draw import rectangle
 from skimage.color import rgb2xyz
 import random
 
-
- 
-
-
 # Root directory of the project
-ROOT_DIR = os.path.abspath("../../")
+ROOT_DIR = os.path.abspath("../")
+print(ROOT_DIR)
 
 # Import Mask RCNN
 sys.path.append(ROOT_DIR)  # To find local version of the library
@@ -51,7 +22,10 @@ from mrcnn.config import Config
 from mrcnn import model as modellib, utils
 
 # Path to trained weights file
-COCO_WEIGHTS_PATH = "/home/atas/catkin_build_ws/src/ROS_NNs_FANUC_LRMATE200ID/Mask_RCNN/logs/NDDS_data_30_epoch.h5"
+COCO_WEIGHTS_PATH = ROOT_DIR + "/logs/NDDS_data_30_epoch.h5"
+TRAIN_JSON_FILE = "/home/atas/MASKRCNN_REAL_DATASET/train.json"
+TRANSFER_WEIGHTS ="coco" 
+DATASET_DIR = "/home/atas/MASKRCNN_REAL_DATASET/"
 
 # Directory to save logs and model checkpoints, if not provided
 # through the command line argument --logs
@@ -61,12 +35,9 @@ DEFAULT_LOGS_DIR = os.path.join(ROOT_DIR, "logs")
 #  Configurations
 ############################################################
 
-
 class MotorPartConfig(Config):
     """Configuration for training on the toy  dataset.
     Derives from the base Config class and overrides some values.
-
-
 
     """
     GPU_COUNT = 1
@@ -102,10 +73,6 @@ class MotorPartDataset(utils.Dataset):
         # Add classes. We have only one class to add.
         self.add_class("motor_part", 1, "motor_part")
 
-        # Train or validation dataset?
-        #assert subset in ["train", "val"]
-        #dataset_dir = os.path.join(dataset_dir)
-
         # Load annotations
         # VGG Image Annotator (up to version 1.6) saves each image in the form:
         # { 'filename': '28503151_5b5b7ec140_b.jpg',
@@ -122,13 +89,11 @@ class MotorPartDataset(utils.Dataset):
         # }
         # We mostly care about the x and y coordinates of each region
         # Note: In VIA 2.0, regions was changed from a dict to a list.
-        with open('/home/atas/real_img_data/train.json', 'r') as myfile:
+        with open(TRAIN_JSON_FILE, 'r') as myfile:
             data=myfile.read()
 
         # parse file
         annotations = json.loads(data)
-        #annotations = json.load(open('/media/atas/b7743b4f-8b7a-46b5-bd01-cb2efaeedf63/home/atas/Dataset_Synthesizer/Source/NVCapturedData/NewMap/label.json'))
-        #annotations = list(annotations.values())  # don't need the dict keys
 
         # The VIA tool saves images in the JSON even if they don't have any
         # annotations. Skip unannotated images.
@@ -214,12 +179,12 @@ def train(model):
     """Train the model."""
     # Training dataset.
     dataset_train = MotorPartDataset()
-    dataset_train.load_motor_part(args.dataset)
+    dataset_train.load_motor_part(DATASET_DIR)
     dataset_train.prepare()
 
     # Validation dataset
     dataset_val = MotorPartDataset()
-    dataset_val.load_motor_part(args.dataset)
+    dataset_val.load_motor_part(DATASET_DIR)
     dataset_val.prepare()
 
     # *** This training schedule is an example. Update to your needs ***
@@ -231,218 +196,34 @@ def train(model):
                 learning_rate=config.LEARNING_RATE,
                 epochs=30,
                 layers='heads')
-
-
-def segment_objects_on_white_image(image, boxes, masks, class_ids, class_names,
-                      scores=None,):
-    """Apply color splash effect.
-    image: RGB image [height, width, 3]
-    mask: instance segmentation mask [height, width, instance count]
-    Returns result image.
-    """
-    # Make a grayscale copy of the image. The grayscale copy still
-    # has 3 RGB channels, though.
-    #xyz = rgb2xyz(image)
-    height = 1280#image.shape[0]
-    width = 720#image.shape[1]
-    channels = 3#image.shape[2] 
- 
-    # Copy color pixels from the original color image where mask is set
-    if masks.shape[-1] > 0:
-        fuck_python = True
-
-    N = boxes.shape[0]
-
-    white_image = np.zeros((height, width, channels), np.uint8)
-    white_image[:] = (255, 255, 255)
-
-    for i in range(N):
-
-        # Bounding box
-        if not np.any(boxes[i]):
-            # Skip this instance. Has no bbox. Likely lost in image cropping.
-            continue
-        #y1, x1, y2, x2 = boxes[i]
-        
-        #boxed_image = cv2.rectangle(image,(x1,y1),(x2,y2),(0,225,0),1)
-        
-
-        class_id = class_ids[i]
-        score = scores[i] if scores is not None else None
-        label = class_names[class_id]
-        caption = "{} {:.3f}".format(label, score) if score else label
-        
-        # Mask
-        mask = masks[:, :, i]
-        object_mask_image = np.zeros((height,width,1), np.uint8)
-        
-
-        for i in range(0,height):
-            for j in range(0,width):
-                val = mask[i][j]
-                object_mask_image[i][j] = val
-
-        contours, hierarchy = cv2.findContours(
-                object_mask_image, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE
-            )
-        cv2.fillPoly(white_image, contours, (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255)))
-
-
-    return white_image
-
-
-
-
-
-def detect_and_color_splash(model, image_path=None, video_path=None):
-    assert image_path or video_path
-    BALLOON_DIR =  "/home/atas/NewMap"
-    # Validation dataset
-    dataset = MotorPartDataset()
-    dataset.load_motor_part(BALLOON_DIR)
-    dataset.prepare()
-    import cv2
-    # Image or video?
-    if image_path:
-        # Run model detection and generate the color splash effect
-        print("Running on {}".format(args.image))
-        # Read image
-        image = skimage.io.imread(args.image)
-        image = image[..., :3]
-        # Detect objects
-        r = model.detect([image], verbose=1)[0]
-        # Color splash
-        splash = color_splash(image, r['masks'])
-        # Save output
-        file_name = "splash_{:%Y%m%dT%H%M%S}.png".format(datetime.datetime.now())
-        skimage.io.imsave(file_name, splash)
-
-    elif video_path:
-        import cv2
-        # Video capture
-        vcapture = cv2.VideoCapture(video_path)
-        width = int(vcapture.get(cv2.CAP_PROP_FRAME_WIDTH))
-        height = int(vcapture.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        fps = vcapture.get(cv2.CAP_PROP_FPS)
-
-        # Define codec and create video writer
-        file_name = "splash_{:%Y%m%dT%H%M%S}.avi".format(datetime.datetime.now())
-        vwriter = cv2.VideoWriter(file_name,
-                                  cv2.VideoWriter_fourcc(*'MJPG'),
-                                  fps, (width, height))
-
-        count = 0
-        success = True
-        while success:
-            print("frame: ", count)
-            # Read next image
-            success, image = vcapture.read()
-            if success:
-                # OpenCV returns images as BGR, convert to RGB
-                image = image[..., ::-1]
-                # Detect objects
-                r = model.detect([image], verbose=0)[0]
-                # Color splash
-                splash = color_splash(image, r['masks'])
-                # RGB -> BGR to save image to video
-                splash = splash[..., ::-1]
-                # Add image to video writer
-                vwriter.write(splash)
-                count += 1
-        vwriter.release()
-    print("Saved to ", file_name)
-
-
 ############################################################
 #  Training
 ############################################################
 
 if __name__ == '__main__':
     import argparse
-
-    # Parse command line arguments
-    parser = argparse.ArgumentParser(
-        description='Train Mask R-CNN to detect balloons.')
-    parser.add_argument("command",
-                        metavar="<command>",
-                        help="'train' or 'splash'")
-    parser.add_argument('--dataset', required=False,
-                        metavar="/path/to/balloon/dataset/",
-                        help='Directory of the Balloon dataset')
-    parser.add_argument('--weights', required=True,
-                        metavar="/path/to/weights.h5",
-                        help="Path to weights .h5 file or 'coco'")
-    parser.add_argument('--logs', required=False,
-                        default=DEFAULT_LOGS_DIR,
-                        metavar="/path/to/logs/",
-                        help='Logs and checkpoints directory (default=logs/)')
-    parser.add_argument('--image', required=False,
-                        metavar="path or URL to image",
-                        help='Image to apply the color splash effect on')
-    parser.add_argument('--video', required=False,
-                        metavar="path or URL to video",
-                        help='Video to apply the color splash effect on')
-    args = parser.parse_args()
-
-    # Validate arguments
-    if args.command == "train":
-        assert args.dataset, "Argument --dataset is required for training"
-    elif args.command == "splash":
-        assert args.image or args.video,\
-               "Provide --image or --video to apply color splash"
-
-    print("Weights: ", args.weights)
-    print("Dataset: ", args.dataset)
-    print("Logs: ", args.logs)
-
-    # Configurations
-    if args.command == "train":
-        config = MotorPartConfig()
-    else:
-        class InferenceConfig(MotorPartConfig):
-            # Set batch size to 1 since we'll be running inference on
-            # one image at a time. Batch size = GPU_COUNT * IMAGES_PER_GPU
-            GPU_COUNT = 1
-            IMAGES_PER_GPU = 1
-        config = InferenceConfig()
-        #config.gpu_options.allow_growth = True
-
+ 
+    config = MotorPartConfig()
     config.display()
-
-    # Create model
-    if args.command == "train":
-        model = modellib.MaskRCNN(mode="training", config=config,
-                                  model_dir=args.logs)
-    else:
-        model = modellib.MaskRCNN(mode="inference", config=config,
-                                  model_dir=args.logs)
+    model = modellib.MaskRCNN(mode="training", config=config,
+                                  model_dir=DEFAULT_LOGS_DIR)
 
     # Select weights file to load
-    if args.weights.lower() == "coco":
+    if TRANSFER_WEIGHTS == "coco":
         weights_path = COCO_WEIGHTS_PATH
         # Download weights file
         if not os.path.exists(weights_path):
             utils.download_trained_weights(weights_path)
-    elif args.weights.lower() == "last":
+    elif TRANSFER_WEIGHTS == "last":
         # Find last trained weights
         weights_path = model.find_last()
-    elif args.weights.lower() == "imagenet":
+    elif TRANSFER_WEIGHTS == "imagenet":
         # Start from ImageNet trained weights
         weights_path = model.get_imagenet_weights()
-    else:
-        weights_path = args.weights
 
     # Load weights
     print("Loading weights ", weights_path)
     model.load_weights(weights_path, by_name=True, exclude=[ "mrcnn_class_logits", "mrcnn_bbox_fc", "mrcnn_bbox", "mrcnn_mask"])
         
+    train(model)
 
-    # Train or evaluate
-    if args.command == "train":
-        train(model)
-    elif args.command == "splash":
-        detect_and_color_splash(model, image_path=args.image,
-                                video_path=args.video)
-    else:
-        print("'{}' is not recognized. "
-              "Use 'train' or 'splash'".format(args.command))

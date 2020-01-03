@@ -89,6 +89,7 @@ class Mask_RCNN_ROS_Node:
         self.subscriber = rospy.Subscriber("/camera/color/image_raw",
                                            Image, self.callback, queue_size=1)
         self.bridge = CvBridge()
+        self.counter = 1200
 
 
     def callback(self, ros_data):
@@ -97,7 +98,11 @@ class Mask_RCNN_ROS_Node:
         #### direct conversion to CV2 ####
         cv_image = self.bridge.imgmsg_to_cv2(ros_data, desired_encoding="bgr8")
 
-
+        # Uncomment thefollowing block in order to collect training data
+        '''
+        cv2.imwrite("/home/atas/MASKRCNN_REAL_DATASET/"+str(self.counter)+".png",cv_image)
+        self.counter = self.counter +1 
+        '''
         # Run object detection
         global graph
         with graph.as_default():
