@@ -56,9 +56,9 @@ class InferenceConfig(config.__class__):
     # Run detection on one image at a time
     GPU_COUNT = 1
     IMAGES_PER_GPU = 1
-    BATCH_SIZE = 8
-    IMAGE_MIN_DIM = 720
-    IMAGE_MAX_DIM = 1280
+    BATCH_SIZE = 1
+    IMAGE_MIN_DIM = 480
+    IMAGE_MAX_DIM = 960
 
 
 config = InferenceConfig()
@@ -72,7 +72,7 @@ DEVICE = "/gpu:0"  # /cpu:0 or /gpu:0
 with tf.device(DEVICE):
     model = modellib.MaskRCNN(mode="inference", model_dir=MODEL_DIR,
                               config=config)
-weights_path = "/home/atas/catkin_build_ws/src/ROS_NNs_FANUC_LRMATE200ID/Mask_RCNN/logs/real_data_30_epoch.h5"
+weights_path = "Mask_RCNN/logs/real_data_30_epoch.h5"
 print("Loading weights ", weights_path)
 model.load_weights(weights_path, by_name=True)
 graph = tf.get_default_graph()
@@ -87,8 +87,8 @@ class Mask_RCNN_ROS_Node:
                                          Image)
 
         self.subscriber = rospy.Subscriber("/camera/color/image_raw",
-                                           Image, self.callback, queue_size=1)
-        self.bridge = CvBridge()
+                                           Image, self.callback, queue_size=1, buff_size=52428800)
+        self.bridge = CvBridge()                                                         
         self.counter = 1200
 
 
@@ -150,6 +150,7 @@ class Mask_RCNN_ROS_Node:
         white_image = np.zeros((height, width, channels), np.uint8)
         white_image[:] = (255, 255, 255)
         object_mask_image = np.zeros((height, width), np.uint8)
+        kernel = np.ones((21,21),np.uint8)
 
         for i in range(N):
 
@@ -164,14 +165,15 @@ class Mask_RCNN_ROS_Node:
                 break
             # Mask
             object_mask_image[:,:] = masks[:, :, i]
-
+    
             contours, hierarchy = cv2.findContours(
                 object_mask_image, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE
             )
             cv2.fillPoly(white_image, contours, (random.randint(
                 0, 255), random.randint(0, 255), random.randint(0, 255)))
                
-
+  
+        #white_image = cv2.erode(white_image,kernel,iterations = 1)
         return white_image
 
 
@@ -180,6 +182,7 @@ if __name__ == '__main__':
     '''Initializes and cleanup ros node'''
     ic = Mask_RCNN_ROS_Node()
     rospy.init_node('Mask_RCNN_ROS_Node', anonymous=True)
+    rospy.Rate(30)
     try:
         rospy.spin()
     except KeyboardInterrupt:
