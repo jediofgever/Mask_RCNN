@@ -72,7 +72,7 @@ DEVICE = "/gpu:0"  # /cpu:0 or /gpu:0
 with tf.device(DEVICE):
     model = modellib.MaskRCNN(mode="inference", model_dir=MODEL_DIR,
                               config=config)
-weights_path = "Mask_RCNN/logs/real_data_30_epoch.h5"
+weights_path = "/home/atas/catkin_build_ws/src/ROS_NNs_FANUC_LRMATE200ID/Mask_RCNN/logs/real_data_30_epoch.h5"
 print("Loading weights ", weights_path)
 model.load_weights(weights_path, by_name=True)
 graph = tf.get_default_graph()
@@ -87,7 +87,7 @@ class Mask_RCNN_ROS_Node:
                                          Image)
 
         self.subscriber = rospy.Subscriber("/camera/color/image_raw",
-                                           Image, self.callback, queue_size=1, buff_size=52428800)
+                                           Image, self.callback, queue_size=1, buff_size=2002428800)
         self.bridge = CvBridge()                                                         
         self.counter = 1200
 
