@@ -82,7 +82,7 @@ class Mask_RCNN_ROS_Node:
                                          Image)
 
         self.subscriber = rospy.Subscriber("/camera/color/image_raw",
-                                           Image, self.callback, queue_size=1, buff_size=52428800)
+                                           Image, self.callback, queue_size=1, buff_size=2002428800)
         self.bridge = CvBridge()                                                         
         self.counter = 1200
 
