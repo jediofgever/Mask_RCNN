@@ -1,10 +1,4 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# # Mask R-CNN - Inspect Ballon Trained Model
-#
-# Code and visualizations to test, debug, and evaluate the Mask R-CNN model.
-
+ 
 
 from motor_part.maskrcnn_train import  MotorPartConfig
 from mrcnn.config import Config
@@ -16,7 +10,7 @@ import mrcnn.utils as utils
 from skimage.io import imsave, imread
 
 from mrcnn import utils
-import os
+import os, os.path
 import sys
 import random
 import math
@@ -49,6 +43,7 @@ sys.path.append(ROOT_DIR)  # To find local version of the library
 MODEL_DIR = os.path.join(ROOT_DIR, "logs")
 
 
+
 config = MotorPartConfig()
 # Override the training configurations with a few
 # changes for inferencing.
@@ -72,7 +67,7 @@ DEVICE = "/gpu:0"  # /cpu:0 or /gpu:0
 with tf.device(DEVICE):
     model = modellib.MaskRCNN(mode="inference", model_dir=MODEL_DIR,
                               config=config)
-weights_path = "Mask_RCNN/logs/real_data_30_epoch.h5"
+weights_path = "/home/atas/catkin_build_ws/src/ROS_NNs_FANUC_LRMATE200ID/Mask_RCNN/logs/real_data_30_epoch.h5"
 print("Loading weights ", weights_path)
 model.load_weights(weights_path, by_name=True)
 graph = tf.get_default_graph()
