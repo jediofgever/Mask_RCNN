@@ -42,22 +42,21 @@ sys.path.append(ROOT_DIR)  # To find local version of the library
 # Directory to save logs and trained model
 MODEL_DIR = os.path.join(ROOT_DIR, "logs")
 
+import coco
 
+config = coco.CocoConfig()
+config.display()
 
-config = MotorPartConfig()
-# Override the training configurations with a few
-# changes for inferencing.
 class InferenceConfig(config.__class__):
     # Run detection on one image at a time
     GPU_COUNT = 1
     IMAGES_PER_GPU = 1
-    BATCH_SIZE = 1
-    IMAGE_MIN_DIM = 540
-    IMAGE_MAX_DIM = 960
-
+    DETECTION_MIN_CONFIDENCE = 0.3
 
 config = InferenceConfig()
 config.display()
+
+
 # Device to load the neural network on.
 # Useful if you're training a model on the same
 # machine, in which case use CPU and leave the
@@ -67,7 +66,7 @@ DEVICE = "/gpu:0"  # /cpu:0 or /gpu:0
 with tf.device(DEVICE):
     model = modellib.MaskRCNN(mode="inference", model_dir=MODEL_DIR,
                               config=config)
-weights_path = "/home/atas/catkin_build_ws/src/ROS_NNs_FANUC_LRMATE200ID/Mask_RCNN/logs/real_data_30_epoch.h5"
+weights_path = "/home/atas/catkin_build_ws/src/ROS_NNs_FANUC_LRMATE200ID/Mask_RCNN/logs/mask_rcnn_coco.h5"
 print("Loading weights ", weights_path)
 model.load_weights(weights_path, by_name=True)
 graph = tf.get_default_graph()
@@ -85,8 +84,6 @@ class Mask_RCNN_ROS_Node:
                                            Image, self.callback, queue_size=1, buff_size=2002428800)
         self.bridge = CvBridge()                                                         
         self.counter = 1200
-        self.start_time = time.time()
-        self.x = 1 # displays the frame rate every 1 second
 
 
     def callback(self, ros_data):
@@ -94,7 +91,7 @@ class Mask_RCNN_ROS_Node:
         Here images get converted and OBJECTS detected'''
         #### direct conversion to CV2 ####
         cv_image = self.bridge.imgmsg_to_cv2(ros_data, desired_encoding="bgr8")
-        #cv_image =  cv2.resize(cv_image, (480,240), interpolation = cv2.INTER_AREA)        
+
         # Uncomment thefollowing block in order to collect training data
         '''
         cv2.imwrite("/home/atas/MASKRCNN_REAL_DATASET/"+str(self.counter)+".png",cv_image)
@@ -114,11 +111,6 @@ class Mask_RCNN_ROS_Node:
         msg = self.bridge.cv2_to_imgmsg(segmented_image, "bgr8")
         msg.header.stamp = rospy.Time.now()
         self.image_pub.publish(msg)
-        self.counter+=1
-        if (time.time() - self.start_time) > self.x :
-            print("FPS: ", self.counter / (time.time() - self.start_time))
-            self.counter = 0
-            self.start_time = time.time()    
          
 
     def load_image(self, image):
@@ -163,7 +155,7 @@ class Mask_RCNN_ROS_Node:
 
             class_id = class_ids[i]
             score = scores[i] if scores is not None else None
-            if(score < 0.6):
+            if(score < 0.99):
                 break
             # Mask
             object_mask_image[:,:] = masks[:, :, i]
