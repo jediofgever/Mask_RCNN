@@ -33,6 +33,8 @@ from sensor_msgs.msg import CompressedImage
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge, CvBridgeError
 from skimage.util import img_as_float
+from pathlib import Path
+home = str(Path.home())
 
 
 # Root directory of the project
@@ -67,7 +69,8 @@ DEVICE = "/gpu:0"  # /cpu:0 or /gpu:0
 with tf.device(DEVICE):
     model = modellib.MaskRCNN(mode="inference", model_dir=MODEL_DIR,
                               config=config)
-weights_path = "/home/atas/catkin_ws/catkin_ws_py3_nn/src/ROS_NNs_FANUC_LRMATE200ID/Mask_RCNN/logs/real_data_30_epoch.h5"
+weights_path =   home + "/release_ws/release_ws_py3_nn/src/ROS_NNs_FANUC_LRMATE200ID/Mask_RCNN/logs/real_data_30_epoch.h5"
+
 print("Loading weights ", weights_path)
 model.load_weights(weights_path, by_name=True)
 graph = tf.get_default_graph()
@@ -97,7 +100,7 @@ class Mask_RCNN_ROS_Node:
         #cv_image =  cv2.resize(cv_image, (480,240), interpolation = cv2.INTER_AREA)        
         # Uncomment thefollowing block in order to collect training data
         '''
-        cv2.imwrite("/home/atas/MASKRCNN_REAL_DATASET/"+str(self.counter)+".png",cv_image)
+        cv2.imwrite(home + "/MASKRCNN_REAL_DATASET/"+str(self.counter)+".png",cv_image)
         self.counter = self.counter +1 
         '''
         # Run object detection
