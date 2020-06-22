@@ -33,6 +33,8 @@ from sensor_msgs.msg import CompressedImage
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge, CvBridgeError
 from skimage.util import img_as_float
+from pathlib import Path
+home = str(Path.home())
 
 
 # Root directory of the project
@@ -98,7 +100,7 @@ class Mask_RCNN_ROS_Node:
         #cv_image =  cv2.resize(cv_image, (480,240), interpolation = cv2.INTER_AREA)        
         # Uncomment thefollowing block in order to collect training data
         '''
-        cv2.imwrite("/home/atas/MASKRCNN_REAL_DATASET/"+str(self.counter)+".png",cv_image)
+        cv2.imwrite(home + "/MASKRCNN_REAL_DATASET/"+str(self.counter)+".png",cv_image)
         self.counter = self.counter +1 
         '''
         # Run object detection
