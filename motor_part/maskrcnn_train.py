@@ -22,10 +22,10 @@ from mrcnn.config import Config
 from mrcnn import model as modellib, utils
 
 # Path to trained weights file
-COCO_WEIGHTS_PATH = ROOT_DIR + "/logs/NDDS_data_30_epoch.h5"
-TRAIN_JSON_FILE = "/home/atas/MASKRCNN_REAL_DATASET/train.json"
+COCO_WEIGHTS_PATH = ROOT_DIR + "/logs/real_data_30_epoch.h5"
+TRAIN_JSON_FILE = "/home/royle/catkin_ws/ws_py3_nn/src/CNN_DETS_PICKPLACE/Mask_RCNN/data/labels.json"
 TRANSFER_WEIGHTS ="coco" 
-DATASET_DIR = "/home/atas/MASKRCNN_REAL_DATASET/"
+DATASET_DIR = "/home/royle/catkin_ws/ws_py3_nn/src/CNN_DETS_PICKPLACE/Mask_RCNN/data/"
 
 # Directory to save logs and model checkpoints, if not provided
 # through the command line argument --logs
@@ -57,6 +57,12 @@ class MotorPartConfig(Config):
 
     # Skip detections with < 90% confidence
     DETECTION_MIN_CONFIDENCE = 0.9
+
+    IMAGE_RESIZE_MODE = "square"
+
+    BATCH_SIZE = 1
+
+
 
 
 ############################################################
@@ -194,7 +200,7 @@ def train(model):
     print("Training network heads")
     model.train(dataset_train, dataset_val,
                 learning_rate=config.LEARNING_RATE,
-                epochs=30,
+                epochs=1,
                 layers='heads')
 ############################################################
 #  Training
